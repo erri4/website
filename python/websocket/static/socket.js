@@ -98,7 +98,6 @@ let connect = function(name) {
         else if (header === 'rm_ppl') {
             if (msg === '') {
                 document.querySelector("#ppl").innerHTML = '';
-
             }
             else {
                 let txt = '';

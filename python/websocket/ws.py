@@ -83,17 +83,19 @@ def new_client(client, server):
 
 
 def client_left(client, server):
-    cl_name = ''
-    for cl in clients_name:
-        if cl[0] == client['id']:
-            cl_name = cl[1]
+    cl_name = get_cl_name(client)
     clients_name.remove([client['id'], cl_name])
     clients.remove(client)
     if get_cr_rm(client) != False:
-        for cl in rooms[f'{get_cr_rm(client)}']:
+        cr_rm = get_cr_rm(client)
+        leave_room(client)
+        for cl in rooms[f'{cr_rm}']:
                 if cl != client:
                     send(f'<span class="sys_msg">*{cl_name} have left the room*</span>', cl, server)
-        leave_room(client)
+                    send(get_participants(cr_rm), cl, server, 'rm_ppl')
+    for cl in clients:
+            if get_cr_rm(cl) == False:
+                send(list(get_rooms()), cl, server, 'rooms')
     print(f"Client disconnected: {cl_name}")
 
 def message_received(client, server, msg):
