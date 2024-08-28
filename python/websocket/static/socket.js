@@ -96,7 +96,12 @@ let connect = function(name) {
             }
         }
         else if (header === 'rm_ppl') {
-            let txt = '';
+            if (msg === '') {
+                document.querySelector("#ppl").innerHTML = '';
+
+            }
+            else {
+                let txt = '';
             for (let i = 0; i < msg.length; i++) {
                 if (i !== msg.length - 1) {
                     txt += msg[i] + ', ';
@@ -105,7 +110,8 @@ let connect = function(name) {
                     txt += msg[i];
                 }
             }
-            document.querySelector("#ppl").innerHTML = `participants: ${txt.replace(document.querySelector("#usrname").innerHTML, "you")}`
+            document.querySelector("#ppl").innerHTML = `participants: ${txt.replace(document.querySelector("#usrname").innerHTML, "you")}`;
+            }
         }
         else if (header === 'name') {
             document.querySelector('#username').innerHTML = `username:`;
