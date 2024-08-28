@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>socket</title>
+</head>
+<body>
+    <script src="socket.js"></script>
+    <div id="username" class="names"></div>
+    <div id="usrname" class="names"></div>
+    <br>
+    <br>
+    <br>
+    <div id="rooms"></div>
+    <div id="fails"></div>
+    <div id="msgs">
+        <input id="name" onkeydown="
+            if (event.key === 'Enter') {
+                s = connect(this.value);
+                document.querySelector('#fails').innerHTML = '';
+                document.querySelector('#msgs').innerHTML = login;
+            }
+        ">
+        <button onclick="
+            s = connect(document.querySelector('#name').value);
+            document.querySelector('#fails').innerHTML = '';
+            document.querySelector('#msgs').innerHTML = login;
+        ">login</button>
+    </div>
+    <br>
+    <br>
+    <br>
+    <br>
+    <br>
+    <br>
+    <br>
+    <br>
+    <div id="room_data">
+        <div id="name"></div>
+        <div id="ppl"></div>
+    </div>
+</body>
+</html>
