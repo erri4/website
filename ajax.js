@@ -24,12 +24,12 @@ let send_http_req = function(obj = {}, method = "POST", to = "server.php", resul
             arr.push(`${v}=${obj[`${v}`]}`);
         });
         txt = encodeURI(arr.join("&"));
-        if (method === "GET" || method === "get"){
-            httpreq.open(`${method}`, `${to}?${txt}`, true);
+        if (method.toUpperCase() === "GET"){
+            httpreq.open(`${method.toUpperCase()}`, `${to}?${txt}`, true);
             httpreq.send();
         }
-        else if(method === "POST" || method === "post"){
-            httpreq.open(`${method}`, `${to}`, true);
+        else if(method.toUpperCase() === "POST"){
+            httpreq.open(`${method.toUpperCase()}`, `${to}`, true);
             httpreq.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
             httpreq.send(`${txt}`);
         }
