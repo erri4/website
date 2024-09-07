@@ -1,16 +1,18 @@
 let s;
 let login = `
     <input id="name" onkeydown="
-        if (event.key === 'Enter') {
-            send(s, this.value, 'name');
+        if (event.key === 'Enter' && this.value !== '') {
+            send(s, [this.value, color], 'name');
             document.querySelector('#fails').innerHTML = '';
             document.querySelector('#msgs').innerHTML = login;
         }
     ">
     <button onclick="
-        send(s, document.querySelector('#name').value, 'name');
-        document.querySelector('#fails').innerHTML = '';
-        document.querySelector('#msgs').innerHTML = login;
+        if (document.querySelector('#name').value !== '') {
+            send(s, document.querySelector('#name').value, 'name');
+            document.querySelector('#fails').innerHTML = '';
+            document.querySelector('#msgs').innerHTML = login;
+        }
     ">login</button>
 `;
 let sen = `
@@ -26,7 +28,9 @@ let sen = `
             document.querySelector('#send').value = '';
             document.querySelector('#fails').innerHTML = '';
         ">send</button> <button onclick="
-            send(s, '', 'leave');
+            send(s, 'room', 'leave');
+            document.querySelector('#game').style = '';
+            document.querySelector('#game').innerHTML = '';
             document.querySelector('#msgs').innerHTML = cr;
             document.querySelector('#fails').innerHTML = '';
         ">leave room</button><br>
@@ -48,17 +52,25 @@ let cr = `<input id="cr" onkeydown="
             document.querySelector('#cr').value = '';
         ">create</button><br>
     `;
+let pos;
+let color = [];
+color[0] = Math.floor(Math.random() * (255 - 0 + 1)) + 0
+color[1] = Math.floor(Math.random() * (255 - 0 + 1)) + 0
+color[2] = Math.floor(Math.random() * (255 - 0 + 1)) + 0
 
 let connect = function(name) {
-    const s = new WebSocket('ws://192.168.68.74:5001');
+    const s = new WebSocket('ws://192.168.68.72:5001');
     s.onopen = function() {
-        send(s, name, 'name');
+        if (name !== '') {
+            send(s, [name, color], 'name');
+        }
+        else {
+            document.querySelector('#fails').innerHTML = 'please write a name';
+        }
     };
     s.onmessage = function(e) {
         let header = JSON.parse(e.data)[0];
         let msg = JSON.parse(e.data)[1];
-        console.log(header)
-        console.log(msg)
         if (header === 'msg'){
             document.querySelector('#msgs').innerHTML += `${msg}<br>`;
         }
@@ -82,10 +94,20 @@ let connect = function(name) {
                 document.querySelector('#msgs').innerHTML = sen;
                 document.querySelector('#rooms').innerHTML = '';
                 document.querySelector('#fails').innerHTML = '';
+                document.querySelector("#game").style.width = '500px';
+                document.querySelector("#game").style.height = '500px';
+                document.querySelector("#game").style.border = 'black';
+                document.querySelector("#game").style.borderWidth = '1px';
+                document.querySelector("#game").style.borderStyle = 'solid';
+                pos = [0, 0];
+                send(s, pos, 'move');
             }
             if (msg === 'name') {
                 document.querySelector('#msgs').innerHTML = cr;
             }
+        }
+        else if (header === 'move') {
+            document.querySelector("#game").innerHTML = msg
         }
         else if (header === 'rm_name') {
             if (msg === '') {
@@ -116,16 +138,59 @@ let connect = function(name) {
             document.querySelector('#username').innerHTML = `username:`;
             document.querySelector('#usrname').innerHTML = `${msg}`;
         }
+        else if (header === 'ate') {
+            pos = [0, 0];
+        }
     }
     return s
 }
 
-let send = function(s, msg, header = 'msg') {
-    if (header === 'msg') {
-        s.send(JSON.stringify([header, msg]))
-        document.querySelector('#msgs').innerHTML += `<span class="names">you</span>: ${msg}<br>`;
+
+let move = function(e) {
+    let focus = document.activeElement;
+    if (focus === document.body) {
+        if (e.key === 'ArrowUp') {
+            if (pos[0] !== 0) {
+                pos[0] -= 14;
+                send(s, pos, 'move');
+            }
+        }
+        else if (e.key === 'ArrowDown') {
+            if (pos[0] + 30 !== 492) {
+                pos[0] += 14;
+                send(s, pos, 'move');
+            }
+        }
+        else if (e.key === 'ArrowRight') {
+            if (pos[1] + 30 !== 492) {
+                pos[1] += 14;
+                send(s, pos, 'move');
+            }
+        }
+        else if (e.key === 'ArrowLeft') {
+            if (pos[1] !== 0) {
+                pos[1] -= 14;
+                send(s, pos, 'move');
+            }
+        }
+        else if (e.key === ' ') {
+            send(s, pos, 'eat');
+        }
     }
-    else {
-        s.send(JSON.stringify([header, msg]))
+}
+
+
+document.addEventListener('keydown', move)
+
+
+let send = function(s, msg, header = 'msg') {
+    if (msg !== '') {
+        if (header === 'msg') {
+            s.send(JSON.stringify([header, msg]))
+            document.querySelector('#msgs').innerHTML += `<span style="color:rgb(${color[0]},${color[1]},${color[2]});">you</span>: ${msg}<br>`;
+        }
+        else {
+            s.send(JSON.stringify([header, msg]))
+        }
     }
 }
