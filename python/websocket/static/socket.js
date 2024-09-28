@@ -1,10 +1,13 @@
 let s;
+let room;
 let login = `
     <input id="name" onkeydown="
-        if (event.key === 'Enter' && this.value !== '') {
-            send(s, [this.value, color], 'name');
-            document.querySelector('#fails').innerHTML = '';
-            document.querySelector('#msgs').innerHTML = login;
+        if (event.key === 'Enter') {
+            if (this.value !== '') {
+                send(s, [this.value, color], 'name');
+                document.querySelector('#fails').innerHTML = '';
+                document.querySelector('#msgs').innerHTML = login;
+            }
         }
     ">
     <button onclick="
@@ -38,17 +41,21 @@ let sen = `
 let cr = `<input id="cr" onkeydown="
             if (event.key === 'Enter') {
                 if (this.value == '') {
-                    this.value = 'default'
+                    send(s, null, 'create');
                 }
-                send(s, this.value, 'create');
+                else {
+                    send(s, this.value, 'create');
+                }
                 this.value = '';
             }    
         ">
         <button onclick="
             if (document.querySelector('#cr').value == '') {
-                document.querySelector('#cr').value = 'default'
+                send(s, null, 'create');
             }
-            send(s, document.querySelector('#cr').value, 'create');
+            else {
+                send(s, document.querySelector('#cr').value, 'create');
+            }
             document.querySelector('#cr').value = '';
         ">create</button><br>
     `;
@@ -59,7 +66,7 @@ color[1] = Math.floor(Math.random() * (255 - 0 + 1)) + 0
 color[2] = Math.floor(Math.random() * (255 - 0 + 1)) + 0
 
 let connect = function(name) {
-    const s = new WebSocket('ws://192.168.68.72:5001');
+    const s = new WebSocket('ws://192.168.68.69:5001');
     s.onopen = function() {
         if (name !== '') {
             send(s, [name, color], 'name');
@@ -104,6 +111,9 @@ let connect = function(name) {
             }
             if (msg === 'name') {
                 document.querySelector('#msgs').innerHTML = cr;
+                document.querySelector('#logout').innerHTML = `
+                    <button onclick="location.reload();">sign out</button>
+                `;
             }
         }
         else if (header === 'move') {
@@ -116,6 +126,7 @@ let connect = function(name) {
             else {
                 document.querySelector("#name").innerHTML = `room: ${msg}`;
             }
+            room = msg;
         }
         else if (header === 'rm_ppl') {
             if (msg === '') {
@@ -148,6 +159,16 @@ let connect = function(name) {
 
 let move = function(e) {
     let focus = document.activeElement;
+    if (e.key === 'Enter') {
+            if (focus !== document.querySelector('input')) {
+                document.querySelector('input').focus()
+                focus = document.activeElement;
+            }
+            else {
+                document.body.focus();
+                document.activeElement.blur();
+            }
+    }
     if (focus === document.body) {
         if (e.key === 'ArrowUp') {
             if (pos[0] !== 0) {

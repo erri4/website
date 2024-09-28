@@ -18,6 +18,10 @@
                 s = connect(this.value);
                 document.querySelector('#fails').innerHTML = '';
                 document.querySelector('#msgs').innerHTML = login;
+                if (focus !== document.body) {
+                    document.body.focus();
+                    document.activeElement.blur();
+                }
             }
         ">
         <button onclick="
@@ -43,5 +47,7 @@
     <br>
     <div id="username" class="username"></div>
     <div id="usrname" class="username"></div>
+    <br>
+    <div id="logout"></div>
 </body>
 </html>

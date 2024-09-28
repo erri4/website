@@ -1,227 +1,266 @@
 from websocket_server import WebsocketServer
 import json
 
-clients = []
-clients_name = []
-rooms = {}
-game = {}
+users = []
+rooms = []
+
+
+class user:
+    def __init__(self, client, id):
+        self.client = client
+        self.id = id
+        self.name = None
+        self.room = None
+        self.x = 0
+        self.y = 0
+
+
+    def move(self, x, y):
+        self.x = x
+        self.y = y
+
+
+    def set_name_color(self, name, color):
+        self.name = name
+        self.color = color
+
+
+    def set_room(self, rm):
+        self.room = rm
 
 
 def send(msg, cl, server, header = 'msg'):
     server.send_message(cl, json.dumps([header, msg]))
 
+    
+
+class rom:
+    def __init__(self, name, creator):
+        self.name = name
+        self.participants = [creator]
+    
+
+    def add_participant(self, participant):
+        self.participants.append(participant)
+        
+
+    def remove_participant(self, participant):
+        for part in self.participants:
+            if part == participant:
+                self.participants.remove(participant)
+        if self.participants == []:
+            return True
+        else:
+            return False
+    
+
+    def sendmsg(self, msg, frm, server):
+        reply = f'<span style="color:rgb({frm.color[0]},{frm.color[1]},{frm.color[2]});">{frm.name}</span>: {msg}'
+        for cl in self.participants:
+            if cl != frm:
+                send(reply, cl.client, server)
+    
+
+    def sysmsg(self, msg, server):
+        reply = f'<span class="sys_msg">*{msg}*</span>'
+        for cl in self.participants:
+            send(reply, cl.client, server)
+
+
+    def sendall(self, msg, server, header):
+        for cl in self.participants:
+            send(msg, cl.client, server, header)
+
+
+    def get_pos(self):
+        r = {}
+        for cl in self.participants:
+            r[cl.name] = [cl.x, cl.y]
+        return r
+    
+
+    def move(self, server):
+        play = ''
+        poss = self.get_pos()
+        for player in list(poss.keys()):
+            for cli in self.participants:
+                if cli.name == player:
+                    cl_color = cli.color
+            play += f'<div class="player" style="top:{poss[f'{player}'][0]}px;left:{poss[f'{player}'][1]}px;background-color:rgb({cl_color[0]},{cl_color[1]},{cl_color[2]});"><div class="name">{player}</div></div>'
+        for cli in self.participants:
+            send(play, cli.client, server, 'move')
+    
+
+    def get_usernames(self):
+        r = []
+        for cl in self.participants:
+            r.append(cl.name)
+        return r
+
+
+def get_cli_obj(client):
+    for i in range(len(users)):
+        if users[i].client == client:
+            return i
+    return False
+
 
 def get_rooms():
-    rooms_nm = list(rooms.keys())
-    return rooms_nm
-
-
-def get_participants(room):
     r = []
-    for cl in rooms[f'{room}']:
-        r.append(get_cl_name(cl))
+    for rm in rooms:
+        r.append(rm.name)
     return r
 
 
-def get_cl_name(client):
-    for cl in clients_name:
-        if cl[0] == client['id']:
-            return cl[1]
-        
-
-def get_cl_color(client_nm):
-    for cl in clients_name:
-        if cl[1] == client_nm:
-            return cl[2]
-
-
-def create_room(name, creator):
-    ex = False
-    cl_name = get_cl_name(creator)
-    if name == True:
-        name = f"{cl_name}'s room"
-    for room in get_rooms():
-        if room == name:
-            ex = True
-    if ex == False:
-        game[f'{name}'] = {}
-        rooms[f'{name}'] = [creator]
-        game[f'{name}'][f'{cl_name}'] = ['0', '0']
-        print(f'room created: {name}')
-        return [True, name]
-    else:
-        print('room already exist')
-        return False
-    
-def create_acc(cl, name, color):
-    ex = False
-    for cli in clients_name:
-        if cli[1] == name:
-            ex = True
-    if ex == False:
-        clients_name.remove([cl['id'], None])
-        clients_name.append([cl['id'], name, color])
-        print(f"New client connected: {name}")
-        return True
-    else:
-        print('user already exist')
-        return False
-
-
-def get_cr_rm(client):
-    for room in get_rooms():
-        for cl in rooms[f'{room}']:
-            if cl == client:
-                return room
-    return False
-            
-
-def join_room(cl, room):
-    cl_name = get_cl_name(cl)
-    rooms[f'{room}'].append(cl)
-    game[f'{room}'][f'{cl_name}'] = ['0', '0']
-
-
-def leave_room(cl):
-    cl_name = get_cl_name(cl)
-    room = get_cr_rm(cl)
-    rooms[f'{room}'].remove(cl)
-    game[f'{room}'].pop(f'{cl_name}')
-    if rooms[f'{room}'] == []:
-        rooms.pop(f'{room}')
-        game.pop(f'{room}')
-        return False
-    return True
-
-
 def new_client(client, server):
-    clients.append(client)
-    clients_name.append([client['id'], None])
+    cl = user(client, client['id'])
+    users.append(cl)
 
 
 def client_left(client, server):
-    cl_name = get_cl_name(client)
-    if get_cr_rm(client) != False:
-        cr_rm = get_cr_rm(client)
-        lv = leave_room(client)
-        if lv == True:
-            play = ''
-            for player in list(game[f'{cr_rm}'].keys()):
-                play += f'<div class="player" style="top:{game[f'{cr_rm}'][f'{player}'][0]}px;left:{game[f'{cr_rm}'][f'{player}'][1]}px;background-color:rgb({get_cl_color(player)[0]},{get_cl_color(player)[1]},{get_cl_color(player)[2]});"><div class="name">{player}</div></div>'
-            for cl in rooms[f'{cr_rm}']:
-                    if cl != client:
-                        send(f'<span class="sys_msg">*{cl_name} have left the room*</span>', cl, server)
-                        send(get_participants(cr_rm), cl, server, 'rm_ppl')
-                        send(play, cl, server, 'move')
-    clients_name.remove([client['id'], cl_name, get_cl_color(cl_name)])
-    clients.remove(client)
-    for cl in clients:
-            if get_cr_rm(cl) == False:
-                send(list(get_rooms()), cl, server, 'rooms')
-    print(f"Client disconnected: {cl_name}")
+    c = get_cli_obj(client)
+    obj = users[c]
+    if obj.room != None:
+        room = obj.room
+        r = None
+        for i in range(len(rooms)):
+            if rooms[i].name == room:
+                r = i
+        rm = rooms[r].remove_participant(users[c])
+        users[c].set_room(None)
+        if rm == False:
+            rooms[r].sysmsg(f'{obj.name} have left the room', server)
+            rooms[r].move(server)
+            rooms[r].sendall(rooms[r].get_usernames(), server, 'rm_ppl')
+        else:
+            del rooms[r]
+        for cl in users:
+                if cl.room == None:
+                    send(list(get_rooms()), cl.client, server, 'rooms')
+    for i in range(len(users)):
+        if users[i].client == client:
+            del users[i]
+            break
+    print(f'client left: {obj.name}')
+
 
 def message_received(client, server, msg):
-    cl_name = get_cl_name(client)
+    c = get_cli_obj(client)
+    obj = users[c]
     msg = json.loads(msg)
     header = msg[0]
     msg = msg[1]
-    if cl_name == None and header == 'name':
-        acc = create_acc(client, msg[0], msg[1])
-        if acc == True:
+    if header == 'name':
+        ex = False
+        for cl in users:
+            if cl.name == msg[0]:
+                ex = True
+        if ex == False:
+            users[c].set_name_color(msg[0], msg[1])
             send('name', client, server, 'success')
             send(msg[0], client, server, 'name')
             send(list(get_rooms()), client, server, 'rooms')
+            print(f'new client: {obj.name}')
         else:
             send('user already exist', client, server, 'fail')
-    elif header == 'msg':
-        print(f"{cl_name}: {msg}")
-        reply = f'<span style="color:rgb({get_cl_color(cl_name)[0]},{get_cl_color(cl_name)[1]},{get_cl_color(cl_name)[2]});">{cl_name}</span>: {msg}'
-        for cl in rooms[f'{get_cr_rm(client)}']:
-            if cl != client:
-                send(reply, cl, server)
+    elif header == 'create':
+        if msg == None:
+            msg = f"{obj.name}'s room"
+        ex = False
+        for rm in rooms:
+            if rm.name == msg:
+                ex = True
+        if ex == False:
+            r = rom(msg, obj)
+            rooms.append(r)
+            users[c].set_room(r)
+            send('room', client, server, 'success')
+            users[c].set_room(f'{msg}')
+            send(msg, client, server, 'rm_name')
+            send([obj.name], client, server, 'rm_ppl')
+            for cl in users:
+                if cl.room == None:
+                    send(list(get_rooms()), cl.client, server, 'rooms')
+            r.move(server)
+            print(f'{obj.name} created room: {msg}')
+        else:
+            send('room already exist', client, server, 'fail')
     elif header == 'join':
-        for cl in rooms[f'{msg}']:
-            send(f'<span class="sys_msg">*{cl_name} have joined the room*</span>', cl, server)
-        join_room(client, msg)
+        r = None
+        for i in range(len(rooms)):
+            if rooms[i].name == msg:
+                r = i
+        rooms[r].sysmsg(f'<span class="sys_msg">{obj.name} have joined the room</span>', server)
+        rooms[r].add_participant(users[c])
+        rooms[r].move(server)
         send(msg, client, server, 'rm_name')
         send('room', client, server, 'success')
-        for cl in rooms[f'{msg}']:
-            send(get_participants(msg), cl, server, 'rm_ppl')
-        play = ''
-        for player in list(game[f'{msg}'].keys()):
-            play += f'<div class="player" style="top:{game[f'{msg}'][f'{player}'][0]}px;left:{game[f'{msg}'][f'{player}'][1]}px;background-color:rgb({get_cl_color(player)[0]},{get_cl_color(player)[1]},{get_cl_color(player)[2]});"><div class="name">{player}</div></div>'
-        for cl in rooms[f'{msg}']:
-            send(play, cl, server, 'move')
-    elif header == 'create':
-        if msg == 'default':
-            msg = True
-        cr = create_room(msg, client)
-        if cr == False:
-            send('room already exist', client, server, 'fail')
-        else:
-            send('room', client, server, 'success')
-            send(cr[1], client, server, 'rm_name')
-            send([get_cl_name(client)], client, server, 'rm_ppl')
-            for cl in clients:
-                if get_cr_rm(cl) == False:
-                    send(list(get_rooms()), cl, server, 'rooms')
-            play = ''
-            for player in list(game[f'{cr[1]}'].keys()):
-                play += f'<div class="player" style="top:{game[f'{cr[1]}'][f'{player}'][0]}px;left:{game[f'{cr[1]}'][f'{player}'][1]}px;background-color:rgb({get_cl_color(player)[0]},{get_cl_color(player)[1]},{get_cl_color(player)[2]});"><div class="name">{player}</div></div>'
-            for cl in rooms[f'{cr[1]}']:
-                send(play, cl, server, 'move')
+        users[c].set_room(f'{msg}')
+        rooms[r].sendall(rooms[r].get_usernames(), server, 'rm_ppl')
+        print(f'{obj.name} joined room: {msg}')
     elif header == 'leave':
-        rm = get_cr_rm(client)
-        lv = leave_room(client)
-        if lv == True:
-            play = ''
-            for player in list(game[f'{rm}'].keys()):
-                play += f'<div class="player" style="top:{game[f'{rm}'][f'{player}'][0]}px;left:{game[f'{rm}'][f'{player}'][1]}px;background-color:rgb({get_cl_color(player)[0]},{get_cl_color(player)[1]},{get_cl_color(player)[2]});"><div class="name">{player}</div></div>'
-            for cl in rooms[f'{rm}']:
-                    if cl != client:
-                        send(f'<span class="sys_msg">*{cl_name} have left the room*</span>', cl, server)
-                        send(play, cl, server, 'move')
+        room = obj.room
+        r = None
+        for i in range(len(rooms)):
+            if rooms[i].name == room:
+                r = i
+        rm = rooms[r].remove_participant(users[c])
+        users[c].set_room(None)
+        if rm == False:
+            rooms[r].sysmsg(f'{obj.name} have left the room', server)
+            rooms[r].move(server)
+            rooms[r].sendall(rooms[r].get_usernames(), server, 'rm_ppl')
         else:
-            for cl in clients:
-                if get_cr_rm(cl) == False:
-                    send(list(get_rooms()), cl, server, 'rooms')
-        send(list(get_rooms()), client, server, 'rooms')
+            del rooms[r]
+        for cl in users:
+                if cl.room == None:
+                    send(list(get_rooms()), cl.client, server, 'rooms')
         send('', client, server, 'rm_name')
         send('', client, server, 'rm_ppl')
+        print(f'{obj.name} left room: {rooms[r].name}')
+    elif header == 'msg':
+        room = obj.room
+        r = None
+        for i in range(len(rooms)):
+            if rooms[i].name == room:
+                r = i
+        rooms[r].sendmsg(msg, users[c], server)
+        print(f'{obj.name} send: {msg} in room: {rooms[r].name}')
     elif header == 'move':
-        room = get_cr_rm(client)
-        game[f'{room}'][f'{cl_name}'] = [f'{msg[0]}', f'{msg[1]}']
-        play = ''
-        for player in list(game[f'{room}'].keys()):
-            play += f'<div class="player" style="top:{game[f'{room}'][f'{player}'][0]}px;left:{game[f'{room}'][f'{player}'][1]}px;background-color:rgb({get_cl_color(player)[0]},{get_cl_color(player)[1]},{get_cl_color(player)[2]});"><div class="name">{player}</div></div>'
-        for cl in rooms[f'{room}']:
-            send(play, cl, server, 'move')
+        room = obj.room
+        r = None
+        for i in range(len(rooms)):
+            if rooms[i].name == room:
+                r = i
+        users[c].x = msg[0]
+        users[c].y = msg[1]
+        rooms[r].move(server)
     elif header == 'eat':
-        room = get_cr_rm(client)
-        for player in list(game[f'{room}'].keys()):
-            if player != get_cl_name(client):
-                posp = game[f'{room}'][f'{player}']
-                if msg[0] < int(posp[0]) + 29 and msg[0] > int(posp[0]) - 29:
-                    if msg[1] < int(posp[1]) + 29 and msg[1] > int(posp[1]) - 29:
-                        print(f'{get_cl_name(client)} ate {player}')
-                        game[f'{room}'][f'{player}'] = ['0', '0']
-                        play = ''
-                        for player1 in list(game[f'{room}'].keys()):
-                            play += f'<div class="player" style="top:{game[f'{room}'][f'{player1}'][0]}px;left:{game[f'{room}'][f'{player1}'][1]}px;background-color:rgb({get_cl_color(player1)[0]},{get_cl_color(player1)[1]},{get_cl_color(player1)[2]});"><div class="name">{player1}</div></div>'
-                        for cl in rooms[f'{room}']:
-                            send(play, cl, server, 'move')
-                            if get_cl_name(cl) == player:
-                                send('', cl, server, 'ate')
-                            send(f'<span class="sys_msg">*<span style="color:rgb({get_cl_color(get_cl_name(client))[0]},{get_cl_color(get_cl_name(client))[1]},{get_cl_color(get_cl_name(client))[2]});">{get_cl_name(client)}</span> ate <span style="color:rgb({get_cl_color(player)[0]},{get_cl_color(player)[1]},{get_cl_color(player)[2]});">{player}</span>*</span>', cl, server)
+        room = obj.room
+        r = None
+        for i in range(len(rooms)):
+            if rooms[i].name == room:
+                r = i
+        for part in rooms[r].participants:
+            if msg[0] < int(part.x) + 29 and msg[0] > int(part.x) - 29:
+                    if msg[1] < int(part.y) + 29 and msg[1] > int(part.y) - 29:
+                        if part.client != client:
+                            p = get_cli_obj(part.client)
+                            users[p].x = 0
+                            users[p].y = 0
+                            send('', part.client, server, 'ate')
+                            rooms[r].sysmsg(f'<span style="color:rgb({obj.color[0]},{obj.color[1]},{obj.color[2]});">{obj.name}</span> ate <span style="color:rgb({part.color[0]},{part.color[1]},{part.color[2]});">{part.name}</span>', server)
+                            print(f'{obj.name} ate {part.name}')
+        rooms[r].move(server)
 
 
 def start_server():
-    server = WebsocketServer(host='192.168.68.72', port=5001)
+    server = WebsocketServer(host='192.168.68.68', port=5001)
     server.set_fn_new_client(new_client)
     server.set_fn_client_left(client_left)
     server.set_fn_message_received(message_received)
     
-    print("Server listening on 192.168.68.72:5001")
+    print("Server listening on 192.168.68.68:5001")
     server.run_forever()
 
 if __name__ == "__main__":
