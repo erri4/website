@@ -1,6 +1,11 @@
 from websocket_server import WebsocketServer
 import json
 
+
+ip = ''
+with open('ip.txt', encoding='utf8') as file_object:
+    ip = file_object.read()
+
 users = []
 rooms = []
 
@@ -255,12 +260,12 @@ def message_received(client, server, msg):
 
 
 def start_server():
-    server = WebsocketServer(host='192.168.68.68', port=5001)
+    server = WebsocketServer(host=f'{ip}', port=5001)
     server.set_fn_new_client(new_client)
     server.set_fn_client_left(client_left)
     server.set_fn_message_received(message_received)
     
-    print("Server listening on 192.168.68.68:5001")
+    print(f'Server listening on {ip}:5001')
     server.run_forever()
 
 if __name__ == "__main__":

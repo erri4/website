@@ -1,3 +1,9 @@
+let ip = '';
+fetch('../ip.txt').then((res)=> {
+    res.text().then((text)=>{
+        ip = text;
+    })
+})
 let s;
 let room;
 let login = `
@@ -66,7 +72,7 @@ color[1] = Math.floor(Math.random() * (255 - 0 + 1)) + 0
 color[2] = Math.floor(Math.random() * (255 - 0 + 1)) + 0
 
 let connect = function(name) {
-    const s = new WebSocket('ws://192.168.68.69:5001');
+    const s = new WebSocket(`ws://${ip}:5001`);
     s.onopen = function() {
         if (name !== '') {
             send(s, [name, color], 'name');
